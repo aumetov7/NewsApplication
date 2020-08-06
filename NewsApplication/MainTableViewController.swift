@@ -7,6 +7,8 @@
 //
 
 import UIKit
+import SDWebImage
+import SDWebImageWebPCoder
 
 class MainTableViewController: UITableViewController {
     
@@ -21,12 +23,6 @@ class MainTableViewController: UITableViewController {
         parseJSON {
             self.tableView.reloadData()
         }
-        
-        // Uncomment the following line to preserve selection between presentations
-        // self.clearsSelectionOnViewWillAppear = false
-        
-        // Uncomment the following line to display an Edit button in the navigation bar for this view controller.
-        // self.navigationItem.rightBarButtonItem = self.editButtonItem
     }
     
     // MARK: - Table view data source
@@ -41,11 +37,14 @@ class MainTableViewController: UITableViewController {
         
         if let result = newsData?.results[indexPath.row] {
             cell.titleLabel.text = result.title
-            
+                    
+            let webPCoder = SDImageWebPCoder.shared
+            SDImageCodersManager.shared.addCoder(webPCoder)
+
             let imageURL = URL(string: result.images[0].image)
-            let image = cell.imageLabel
-            image?.load(url: imageURL!)
-            cell.imageLabel.image = image?.image
+            DispatchQueue.main.async {
+                cell.imageLabel.sd_setImage(with: imageURL!)
+            }
             
             let textWithoutTags = result.resultDescription
             cell.descriptionLabel.text = textWithoutTags.replacingOccurrences(of: "<[^>]+>",
@@ -56,12 +55,9 @@ class MainTableViewController: UITableViewController {
             let timeInterval = Double(result.publicationDate)
             let myNSDate = Date(timeIntervalSince1970: timeInterval)
             let formatter = DateFormatter()
-            formatter.dateFormat = "yyyy-MM-dd HH:mm:ss"
+            formatter.dateFormat = "yyyy-MM-dd HH:mm"
             let myString = formatter.string(from: myNSDate)
-            let yourDate = formatter.date(from: myString)
-            formatter.dateFormat = "dd-MM-yyyy HH:mm"
-            let myStringafd = formatter.string(from: yourDate!)
-            cell.dataLabel.text = myStringafd
+            cell.dataLabel.text = myString
         } else {
             return UITableViewCell()
         }
@@ -115,7 +111,7 @@ class MainTableViewController: UITableViewController {
      */
     
     func parseJSON(completionHandler: @escaping () -> ()) {
-        let urlString = "https://kudago.com/public-api/v1.4/news/?fields=id,publication_date,title,slug,description,body_text,images,site_url&location=spb&actual_only=true"
+        let urlString = "https://kudago.com/public-api/v1.4/news/?\(param)"
         guard let url = URL(string: urlString) else { return }
         let session = URLSession(configuration: .default)
         let dataTask = session.dataTask(with: url) { (data, response, error) in
