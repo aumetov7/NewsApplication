@@ -11,6 +11,8 @@ import Foundation
 // MARK: - NewsData
 struct NewsData: Codable {
     let count: Int
+    let next: String
+    let previous: String?
     let results: [Result]
 }
 

@@ -14,15 +14,32 @@ class MainTableViewController: UITableViewController {
     
     private var newsData: NewsData?
     
+    let myRefreshControl = { () -> UIRefreshControl in
+        let refreshControl = UIRefreshControl()
+        refreshControl.addTarget(self, action: #selector(refresh(sender:)), for: .valueChanged)
+        
+        return refreshControl
+    }()
+    
     override func viewDidLoad() {
         super.viewDidLoad()
         
         tableView.rowHeight = UITableView.automaticDimension
         tableView.estimatedRowHeight = 80
     
-        parseJSON {
+        parseJSON(completionHandler: {
             self.tableView.reloadData()
-        }
+        })
+        
+        tableView.refreshControl = myRefreshControl
+    }
+    
+    @objc private func refresh(sender: UIRefreshControl) {
+        parseJSON(completionHandler: {
+            self.tableView.reloadData()
+        })
+        
+        sender.endRefreshing()
     }
     
     // MARK: - Table view data source
@@ -37,7 +54,7 @@ class MainTableViewController: UITableViewController {
         
         if let result = newsData?.results[indexPath.row] {
             cell.titleLabel.text = result.title
-                    
+            
             let webPCoder = SDImageWebPCoder.shared
             SDImageCodersManager.shared.addCoder(webPCoder)
 
@@ -111,7 +128,7 @@ class MainTableViewController: UITableViewController {
      */
     
     func parseJSON(completionHandler: @escaping () -> ()) {
-        let urlString = "https://kudago.com/public-api/v1.4/news/?\(param)"
+        let urlString = param
         guard let url = URL(string: urlString) else { return }
         let session = URLSession(configuration: .default)
         let dataTask = session.dataTask(with: url) { (data, response, error) in
@@ -134,29 +151,13 @@ class MainTableViewController: UITableViewController {
         dataTask.resume()
     }
     
-    // MARK: - Table View Delegate
+    // TODO: func that gets next value from model. Make pagination on tableView with reloadData()
+    // TODO: secondView which shows full news https://kudago.com/public-api/v1.4/news/newsId/?fields=id,publication_date,title,slug,description,body_text,images,site_url
+    // TODO: find by title func
+    // TODO: find by cityname
+    // TODO: comments using news id and url: https://kudago.com/public-api/v1.2/news/newsId/comments/
+    // TODO: decorative CardView on tableViewCell
+    // TODO: view kudago url on full news page
     
-//    override func tableView(_ tableView: UITableView, heightForRowAt indexPath: IndexPath) -> CGFloat {
-//        return UITableView.automaticDimension
-//    }
-
-    override func tableView(_ tableView: UITableView, estimatedHeightForRowAt indexPath: IndexPath) -> CGFloat {
-        return UITableView.automaticDimension
-    }
-    
-}
-
-extension UIImageView {
-    func load(url: URL) {
-        DispatchQueue.global().async { [weak self] in
-            if let data = try? Data(contentsOf: url) {
-                if let image = UIImage(data: data) {
-                    DispatchQueue.main.async {
-                        self?.image = image
-                    }
-                }
-            }
-        }
-    }
 }
 

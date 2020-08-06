@@ -8,4 +8,4 @@
 
 import Foundation
 
-let param = "fields=id,publication_date,title,slug,description,body_text,images,site_url&page_size=100&location=spb&actual_only=true"
+let param = "https://kudago.com/public-api/v1.4/news/?fields=id,publication_date,title,slug,description,body_text,images,site_url&text_format=text&location=spb&actual_only=true"
