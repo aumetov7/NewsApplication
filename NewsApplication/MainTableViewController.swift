@@ -14,6 +14,10 @@ class MainTableViewController: UITableViewController {
     
     private var newsData: NewsData?
     
+    private var updatedData = [NewsData?]()
+    private var i = 2
+    private var newsCounter = 0
+    
     let myRefreshControl = { () -> UIRefreshControl in
         let refreshControl = UIRefreshControl()
         refreshControl.addTarget(self, action: #selector(refresh(sender:)), for: .valueChanged)
@@ -27,16 +31,24 @@ class MainTableViewController: UITableViewController {
         tableView.rowHeight = UITableView.automaticDimension
         tableView.estimatedRowHeight = 80
     
-        parseJSON(completionHandler: {
-            self.tableView.reloadData()
+        parseJSON(urlString: param, completionHandler: {
+
+            self.updatedData.append(self.newsData)
+            
+                        self.tableView.reloadData()
         })
         
         tableView.refreshControl = myRefreshControl
+        
+        tableView.delegate = self
     }
     
     @objc private func refresh(sender: UIRefreshControl) {
-        parseJSON(completionHandler: {
-            self.tableView.reloadData()
+        parseJSON(urlString: param, completionHandler: {
+
+            self.updatedData.append(self.newsData)
+            
+                        self.tableView.reloadData()
         })
         
         sender.endRefreshing()
@@ -52,9 +64,11 @@ class MainTableViewController: UITableViewController {
     override func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
         let cell = tableView.dequeueReusableCell(withIdentifier: "Cell", for: indexPath) as! NewsTableViewCell
         
-        if let result = newsData?.results[indexPath.row] {
+        if let lastIndex = newsData?.results.count {
+        
+        if let result = updatedData[((lastIndex + newsCounter) / 10) - i]?.results[indexPath.row] {
             cell.titleLabel.text = result.title
-            
+
             let webPCoder = SDImageWebPCoder.shared
             SDImageCodersManager.shared.addCoder(webPCoder)
 
@@ -62,19 +76,22 @@ class MainTableViewController: UITableViewController {
             DispatchQueue.main.async {
                 cell.imageLabel.sd_setImage(with: imageURL!)
             }
-            
+
             let textWithoutTags = result.resultDescription
             cell.descriptionLabel.text = textWithoutTags.replacingOccurrences(of: "<[^>]+>",
                                                                               with: "",
                                                                               options: .regularExpression,
                                                                               range: nil)
-            
+
             let timeInterval = Double(result.publicationDate)
             let myNSDate = Date(timeIntervalSince1970: timeInterval)
             let formatter = DateFormatter()
             formatter.dateFormat = "yyyy-MM-dd HH:mm"
             let myString = formatter.string(from: myNSDate)
             cell.dataLabel.text = myString
+        } else {
+            return UITableViewCell()
+        }
         } else {
             return UITableViewCell()
         }
@@ -127,8 +144,8 @@ class MainTableViewController: UITableViewController {
      }
      */
     
-    func parseJSON(completionHandler: @escaping () -> ()) {
-        let urlString = param
+    func parseJSON(urlString: String, completionHandler: @escaping () -> ()) {
+//        let urlString = param
         guard let url = URL(string: urlString) else { return }
         let session = URLSession(configuration: .default)
         let dataTask = session.dataTask(with: url) { (data, response, error) in
@@ -137,7 +154,10 @@ class MainTableViewController: UITableViewController {
                     do {
                         let decoder = JSONDecoder()
                         let task = try decoder.decode(NewsData.self, from: data)
+  
                         self.newsData = task
+                        
+                        
                         DispatchQueue.main.async {
                             completionHandler()
                             print(task)
@@ -158,6 +178,24 @@ class MainTableViewController: UITableViewController {
     // TODO: comments using news id and url: https://kudago.com/public-api/v1.2/news/newsId/comments/
     // TODO: decorative CardView on tableViewCell
     // TODO: view kudago url on full news page
+    
+    override func tableView(_ tableView: UITableView, willDisplay cell: UITableViewCell, forRowAt indexPath: IndexPath) {
+        if indexPath.row == (newsData?.results.count)! - 1 {
+
+            guard let nextPage = newsData?.next else { return }
+
+            parseJSON(urlString: nextPage) {
+                self.i += 1
+                self.newsCounter += 20
+                self.updatedData.append(self.newsData)
+                DispatchQueue.main.async {
+                    self.tableView.reloadData()
+                }
+            }
+        }
+        
+
+    }
     
 }
 
